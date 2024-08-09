@@ -71,9 +71,22 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    #- name: Set CC
+    #  id: cc
+    #  shell: bash
+    #  run: |
+    #    echo "CC=${{ matrix.c_compiler }}" >> "$GITHUB_ENV"
+    #- name: Set CXX
+    #  id: cxx
+    #  shell: bash
+    #  run: |
+    #    echo "CXX=${{ matrix.cpp_compiler }}" >> "$GITHUB_ENV"
 
     - name: Prepare Build
       run: meson setup --buildtype release ${{ steps.strings.outputs.build-output-dir }} ${{ github.workspace }}
+      env:
+        CC: ${{ matrix.c_compiler }}
+        CXX: ${{ matrix.cpp_compiler }}
     - name: Run Build
       run: meson compile -v -C ${{ steps.strings.outputs.build-output-dir }}
     - name: Run Test Suite
