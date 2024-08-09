@@ -50,7 +50,9 @@ jobs:
       with:
         python-version: '3.x'
 
+    # see https://dvdhrm.github.io/2021/04/21/meson-msvc-github-actions/
     - name: Prepare msbuild
+      if: contains(matrix.os, 'windows-latest')
       uses: microsoft/setup-msbuild@v2
       with:
         msbuild-architecture: x64
