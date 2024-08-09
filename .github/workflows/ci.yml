@@ -24,7 +24,7 @@ jobs:
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
         os: [ubuntu-latest, windows-latest]
-        build_type: [Release]
+        build_type: [release]
         c_compiler: [gcc, clang, cl]
         include:
           - os: windows-latest
@@ -50,16 +50,11 @@ jobs:
       with:
         python-version: '3.x'
 
-    # see https://dvdhrm.github.io/2021/04/21/meson-msvc-github-actions/
     - name: Prepare msbuild
       if: contains(matrix.os, 'windows-latest')
       uses: microsoft/setup-msbuild@v2
       with:
         msbuild-architecture: x64
-    #  vs-version: '[16.4,16.5)'
-    #uses: bus1/cabuild/action/msdevshell@v1
-    #with:
-    #  architecture: x64
 
     - name: Install Python Dependencies
       run: pip install meson ninja
@@ -69,69 +64,21 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
-    #- name: Set CC
-    #  id: cc
-    #  shell: bash
-    #  run: |
-    #    echo "CC=${{ matrix.c_compiler }}" >> "$GITHUB_ENV"
-    #- name: Set CXX
-    #  id: cxx
-    #  shell: bash
-    #  run: |
-    #    echo "CXX=${{ matrix.cpp_compiler }}" >> "$GITHUB_ENV"
+        echo "builddir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
     - name: Prepare Build for Windows
       if: contains(matrix.os, 'windows-latest')
-      run: meson setup --buildtype release ${{ steps.strings.outputs.build-output-dir }} ${{ github.workspace }}
+      run: meson setup --buildtype ${{ matrix.build_type }} --backend=vs ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+
     - name: Prepare Build
-      if: contains(matrix.os, 'windows-latest')
-      run: meson setup --buildtype release ${{ steps.strings.outputs.build-output-dir }} ${{ github.workspace }}
+      if: ${{ !contains(matrix.os, 'windows-latest') }}
+      run: meson setup --buildtype ${{ matrix.build_type }} ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
       env:
         CC: ${{ matrix.c_compiler }}
         CXX: ${{ matrix.cpp_compiler }}
+
     - name: Run Build
-      run: meson compile -v -C ${{ steps.strings.outputs.build-output-dir }}
+      run: meson compile -v -C ${{ steps.strings.outputs.builddir }}
+
     - name: Run Test Suite
-      run: meson test -v -C ${{ steps.strings.outputs.build-output-dir }}
-
-#    - name: Configure CMake
-#      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-#      # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-#      run: >
-#        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-#        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-#        -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-#        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-#        -S ${{ github.workspace }}
-
-#    - name: Build
-#      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-#      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
-#    - name: Test
-#      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-#      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-#      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-#      run: ctest --build-config ${{ matrix.build_type }}
-
-
-# name: GitHub Actions Demo
-# run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-# on: [push]
-# jobs:
-#   Explore-GitHub-Actions:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-#       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-#       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-#       - name: Check out repository code
-#         uses: actions/checkout@v4
-#       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-#       - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-#       - name: List files in the repository
-#         run: |
-#           ls ${{ github.workspace }}
-#       - run: echo "🍏 This job's status is ${{ job.status }}."
+      run: meson test -v -C ${{ steps.strings.outputs.builddir }}
