@@ -82,7 +82,11 @@ jobs:
     #  run: |
     #    echo "CXX=${{ matrix.cpp_compiler }}" >> "$GITHUB_ENV"
 
+    - name: Prepare Build for Windows
+      if: contains(matrix.os, 'windows-latest')
+      run: meson setup --buildtype release ${{ steps.strings.outputs.build-output-dir }} ${{ github.workspace }}
     - name: Prepare Build
+      if: contains(matrix.os, 'windows-latest')
       run: meson setup --buildtype release ${{ steps.strings.outputs.build-output-dir }} ${{ github.workspace }}
       env:
         CC: ${{ matrix.c_compiler }}
