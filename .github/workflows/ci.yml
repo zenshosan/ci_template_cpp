@@ -64,7 +64,8 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "builddir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "builddir=${{ github.workspace }}/builddir" >> "$GITHUB_OUTPUT"
+        echo "builddir_pkg=${{ github.workspace }}/builddir_pkg" >> "$GITHUB_OUTPUT"
 
     - name: Prepare Build for Windows
       if: contains(matrix.os, 'windows-latest')
@@ -82,3 +83,31 @@ jobs:
 
     - name: Run Test Suite
       run: meson test -v -C ${{ steps.strings.outputs.builddir }}
+
+    - name: Install package
+      run: meson install -C ${{ steps.strings.outputs.builddir }} --destdir ../install_dir
+
+    - name: List files in the repository
+      run: |
+        ls ${{ github.workspace }}
+        ls -R ${{ github.workspace }}/install_dir
+
+    - name: Package Test for Windows
+      if: contains(matrix.os, 'windows-latest')
+      run: |
+        meson setup --buildtype ${{ matrix.build_type }} --backend=vs '-Dpackage_install_dir=install_dir' ${{ steps.strings.outputs.builddir_pkg }} ${{ github.workspace }}/package_test
+        meson compile -v -C ${{ steps.strings.outputs.builddir_pkg }}
+        meson test -v -C ${{ steps.strings.outputs.builddir_pkg }}
+
+    - name: Package Test
+      if: ${{ !contains(matrix.os, 'windows-latest') }}
+      run: |
+        meson setup --buildtype ${{ matrix.build_type }} '-Dpackage_install_dir=install_dir' ${{ steps.strings.outputs.builddir_pkg }} ${{ github.workspace }}/package_test
+        meson compile -v -C ${{ steps.strings.outputs.builddir_pkg }}
+        meson test -v -C ${{ steps.strings.outputs.builddir_pkg }}
+      env:
+        CC: ${{ matrix.c_compiler }}
+        CXX: ${{ matrix.cpp_compiler }}
+        PKG_CONFIG_PATH: ${{ github.workspace }}/install_dir
+
+
