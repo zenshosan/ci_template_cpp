@@ -45,6 +45,12 @@ jobs:
             c_compiler: cl
 
     steps:
+    - run: |
+        echo 111
+        echo PKG_CONFIG_PATH: $PKG_CONFIG_PATH
+        pkg-config --version
+        pkg-config --list-all | grep impl
+
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
@@ -59,6 +65,12 @@ jobs:
     - name: Install Python Dependencies
       run: pip install meson ninja
 
+    - run: |
+        echo 222
+        echo PKG_CONFIG_PATH: $PKG_CONFIG_PATH
+        pkg-config --version
+        pkg-config --list-all | grep impl
+
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
@@ -69,11 +81,24 @@ jobs:
 
     - name: Prepare Build for Windows
       if: contains(matrix.os, 'windows-latest')
-      run: meson setup --buildtype ${{ matrix.build_type }} --backend=vs ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+      # インストール先は
+      #   > meson setup --prefix PREFIX
+      # で行う。
+      #   > meson --destdir DESTDIR
+      # の指定は本来のインストール先とは異なる場所に一時的にインストール(というかコピー)を
+      # 行う場合に使う
+      run: >
+        meson setup
+        --buildtype ${{ matrix.build_type }}
+        --backend=vs ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+        --prefix '${{ github.workspace }}/install_dir'
 
     - name: Prepare Build
       if: ${{ !contains(matrix.os, 'windows-latest') }}
-      run: meson setup --buildtype ${{ matrix.build_type }} ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+      run: >
+        meson setup
+        --buildtype ${{ matrix.build_type }} ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+        --prefix '${{ github.workspace }}/install_dir'
       env:
         CC: ${{ matrix.c_compiler }}
         CXX: ${{ matrix.cpp_compiler }}
@@ -85,7 +110,18 @@ jobs:
       run: meson test -v -C ${{ steps.strings.outputs.builddir }}
 
     - name: Install package
-      run: meson install -C ${{ steps.strings.outputs.builddir }} --destdir ../install_dir
+      run: meson install -C ${{ steps.strings.outputs.builddir }}
+
+    - run: |
+        echo 333
+        echo PKG_CONFIG_PATH: $PKG_CONFIG_PATH
+        pkg-config --version
+        echo 'pkg-config --list-all'
+        pkg-config --list-all | grep impl
+        echo 'pkg-config --list-all again'
+        echo done
+    # ls -R ${{ github.workspace }}/install_dir
+    # cat ${{ github.workspace }}/install_dir/lib/x86_64-linux-gnu/pkgconfig/simpleexample.pc
 
     - name: List files in the repository
       run: |
@@ -102,12 +138,10 @@ jobs:
     - name: Package Test
       if: ${{ !contains(matrix.os, 'windows-latest') }}
       run: |
-        meson setup --buildtype ${{ matrix.build_type }} '-Dpackage_install_dir=install_dir' ${{ steps.strings.outputs.builddir_pkg }} ${{ github.workspace }}/package_test
+        meson setup --buildtype ${{ matrix.build_type }} '-Dpackage_install_dir=install_dir' ${{ steps.strings.outputs.builddir_pkg }} ${{ github.workspace }}/package_test --pkg-config-path '${{ github.workspace }}/install_dir/lib/x86_64-linux-gnu/pkgconfig'
         meson compile -v -C ${{ steps.strings.outputs.builddir_pkg }}
         meson test -v -C ${{ steps.strings.outputs.builddir_pkg }}
       env:
         CC: ${{ matrix.c_compiler }}
         CXX: ${{ matrix.cpp_compiler }}
-        PKG_CONFIG_PATH: ${{ github.workspace }}/install_dir
-
-
+      #  PKG_CONFIG_PATH: '${{ env.PKG_CONFIG_PATH }}:${{ github.workspace }}/install_dir/lib/x86_64-linux-gnu/pkgconfig'

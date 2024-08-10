@@ -1,4 +1,4 @@
-#include <simpleexample/simpleexample.hpp>
+#include <simpleexample.hpp>
 #include <iostream>
 
 int main(int argc, char **argv) {

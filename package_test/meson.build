@@ -6,7 +6,17 @@ project('SimpleExamplePackageTest', 'cpp',
 # not the executables that use the library.
 lib_args = ['-DBUILDING_SIMPLEEXAMPLE']
 
+#bc_dep = dependency('bash-completion')
+#bc_dep = dependency('libdeflate')
+
 message('host_machine.system:', host_machine.system())
+
+# build: コンパイラが動くマシン
+# host: コンパイルさらたコードが動くマシン
+# target: クロスコンパイラをコンパイルする場合に、クロスコンパイラがどのマシンのコードを出力するか
+#    machine A:(build)  Bで動作するC向けのクロスコンパイラXをコンパイルする
+#    machine B:(host)   Xを使ってCで動作するコードYをコンパイルする
+#    machine C:(target) Yが動作する
 if host_machine.system() == 'windows'
   #simpleexample_dep = dependency('include')
   #my_lib = static_library()
@@ -23,7 +33,7 @@ if host_machine.system() == 'windows'
   #my_inc = include_directories('/'.join(env['MY_INSTALL_DIR'], 'include'))
   #my_inc = include_directories('/'.join(meson.current_source_dir(), '..', 'build_rel', 'usrlocal', 'include'))
 
-  my_inc = include_directories('..' / inst_dir_rel / 'include')
+  my_inc = include_directories('..' / inst_dir_rel / 'include' / 'simpleexample')
 
   cc = meson.get_compiler('cpp')
   simpleexample_dep = declare_dependency(
