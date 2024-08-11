@@ -1,0 +1,70 @@
+name: Sanitize
+
+on:
+  push:
+    branches: [ "br_*" ]
+  pull_request:
+    branches: [ "br_*" ]
+
+jobs:
+  sanitize-address:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [release]
+        #c_compiler: [clang]
+        c_compiler: [gcc]
+        sanitize: [address, undefined]
+        #sanitize: [address, undefined, thread]
+        include:
+          #- c_compiler: clang
+          #  cpp_compiler: clang++
+          - c_compiler: gcc
+            cpp_compiler: g++
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: libclang
+      run: |
+        echo **dpkg -l
+        dpkg -l | grep clang
+        echo **apt-cache search clang
+        apt-cache search clang
+        echo clang --version
+        clang++ --version
+
+    - name: Install Python Dependencies
+      run: pip install meson ninja
+
+    - name: Set reusable strings
+      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
+      id: strings
+      shell: bash
+      run: |
+        echo "builddir=${{ github.workspace }}/builddir" >> "$GITHUB_OUTPUT"
+
+    - name: Prepare Build
+      if: ${{ !contains(matrix.os, 'windows-latest') }}
+      run: >
+        meson setup
+        --buildtype=${{ matrix.build_type }}
+        --prefix='${{ github.workspace }}/install_dir'
+        -Db_sanitize=${{ matrix.sanitize }}
+        ${{ steps.strings.outputs.builddir }} ${{ github.workspace }}
+      env:
+        CC: ${{ matrix.c_compiler }}
+        CXX: ${{ matrix.cpp_compiler }}
+      #  LDFLAGS: -shared-libasan
+
+    - name: Run Build
+      run: meson compile -v -C ${{ steps.strings.outputs.builddir }}
+
+    - name: Run Test Suite
+      run: meson test -v -C ${{ steps.strings.outputs.builddir }}
