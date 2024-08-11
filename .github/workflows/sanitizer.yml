@@ -33,24 +33,15 @@ jobs:
       with:
         python-version: '3.x'
 
-    - name: libclang
-      run: |
-        echo **dpkg -l
-        dpkg -l | grep clang
-        echo **apt-cache search clang
-        apt-cache search clang
-        echo clang --version
-        clang++ --version
-
     - name: Install Python Dependencies
       run: pip install meson ninja
 
     - name: Set reusable strings
-      # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
       run: |
         echo "builddir=${{ github.workspace }}/builddir" >> "$GITHUB_OUTPUT"
+        echo "result_file=sanitize_${{ matrix.sanitize }}.txt" >> "$GITHUB_OUTPUT"
 
     - name: Prepare Build
       if: ${{ !contains(matrix.os, 'windows-latest') }}
@@ -70,4 +61,11 @@ jobs:
       run: meson compile -v -C ${{ steps.strings.outputs.builddir }}
 
     - name: Run Test Suite
-      run: meson test -v -C ${{ steps.strings.outputs.builddir }}
+      run: meson test -v -C ${{ steps.strings.outputs.builddir }} 2>&1 | tee ${{ steps.strings.outputs.result_file }}
+
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      with:
+        name: sanitize-results-${{ matrix.sanitize }}
+        path: ${{ steps.strings.outputs.result_file }}
+        overwrite: true
