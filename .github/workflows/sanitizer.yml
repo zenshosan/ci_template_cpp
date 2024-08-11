@@ -7,17 +7,19 @@ on:
     branches: [ "br_*" ]
 
 jobs:
-  sanitize-address:
+  sanitize:
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        build_type: [release]
+        build_type: [debugoptimized]
         #c_compiler: [clang]
         c_compiler: [gcc]
-        sanitize: [address, undefined]
+        # for gcc
+        sanitize: [address, undefined, thread, leak]
+        # for clang
         #sanitize: [address, undefined, thread]
         include:
           #- c_compiler: clang
@@ -61,7 +63,8 @@ jobs:
       env:
         CC: ${{ matrix.c_compiler }}
         CXX: ${{ matrix.cpp_compiler }}
-      #  LDFLAGS: -shared-libasan
+        # shared-libasan is for clang, but won't work
+        # LDFLAGS: -shared-libasan
 
     - name: Run Build
       run: meson compile -v -C ${{ steps.strings.outputs.builddir }}
